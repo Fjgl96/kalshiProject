@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files (NUNCA commitear)
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+*.test.js.map
+jest-results/
+
+# Uploads (local dev)
+uploads/
+tmp/
+
+# Secrets (NUNCA commitear)
+*.pem
+*.key
+secrets/
+credentials/
