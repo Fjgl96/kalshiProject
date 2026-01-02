@@ -5,9 +5,19 @@
 
 import express from 'express';
 import helmet from 'helmet';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.config';
 import { pool, healthCheck } from './config/database.config';
+
+// Importar rutas
+import authRoutes from './api/routes/auth.routes';
+import kycRoutes from './api/routes/kyc.routes';
+
+// Importar middleware
+import { checkMaintenance } from './middleware/auth.middleware';
+import { AuthError } from './services/auth.service';
+import { KYCError } from './services/kyc.service';
 
 const app = express();
 
@@ -17,6 +27,14 @@ const app = express();
 
 // Helmet: Headers de seguridad
 app.use(helmet());
+
+// CORS
+app.use(cors({
+  origin: env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Rate limiting global
 const limiter = rateLimit({
@@ -35,6 +53,9 @@ app.use(limiter);
 // JSON parsing
 app.use(express.json({ limit: '10kb' }));
 
+// Verificar modo mantenimiento
+app.use(checkMaintenance);
+
 // ============================================================================
 // HEALTH CHECK
 // ============================================================================
@@ -51,25 +72,77 @@ app.get('/health', async (req, res) => {
 });
 
 // ============================================================================
-// PLACEHOLDER PARA RUTAS (Se implementarán en fases siguientes)
+// RUTAS DE API
 // ============================================================================
 
-app.get(`/api/${env.API_VERSION}`, (req, res) => {
+const apiPrefix = `/api/${env.API_VERSION}`;
+
+// Información del API
+app.get(apiPrefix, (req, res) => {
   res.json({
     message: 'Kalshi Perú API',
     version: env.API_VERSION,
-    documentation: '/docs'
+    endpoints: {
+      auth: `${apiPrefix}/auth`,
+      kyc: `${apiPrefix}/kyc`,
+      markets: `${apiPrefix}/markets`,
+      orders: `${apiPrefix}/orders`,
+      wallet: `${apiPrefix}/wallet`
+    }
   });
 });
+
+// Rutas de autenticación
+app.use(`${apiPrefix}/auth`, authRoutes);
+
+// Rutas KYC
+app.use(`${apiPrefix}/kyc`, kycRoutes);
 
 // ============================================================================
 // MANEJO DE ERRORES
 // ============================================================================
 
+// Errores de autenticación y KYC
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err.message);
+  // Manejar errores de autenticación
+  if (err instanceof AuthError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
 
+  // Manejar errores de KYC
+  if (err instanceof KYCError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Errores de Multer (upload de archivos)
+  if (err.name === 'MulterError') {
+    res.status(400).json({
+      success: false,
+      error: err.message,
+      code: 'FILE_UPLOAD_ERROR'
+    });
+    return;
+  }
+
+  // Log del error
+  console.error('Error:', err.message);
+  if (env.NODE_ENV === 'development') {
+    console.error(err.stack);
+  }
+
+  // Error genérico
   res.status(500).json({
+    success: false,
     error: 'Internal server error',
     code: 'INTERNAL_ERROR',
     ...(env.NODE_ENV === 'development' && { details: err.message })
@@ -79,8 +152,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    error: 'Not found',
-    code: 'NOT_FOUND'
+    success: false,
+    error: 'Endpoint not found',
+    code: 'NOT_FOUND',
+    path: req.path
   });
 });
 
