@@ -15,6 +15,8 @@ import authRoutes from './api/routes/auth.routes';
 import kycRoutes from './api/routes/kyc.routes';
 import walletRoutes from './api/routes/wallet.routes';
 import paymentRoutes from './api/routes/payment.routes';
+import marketRoutes from './api/routes/market.routes';
+import orderRoutes from './api/routes/order.routes';
 
 // Importar middleware
 import { checkMaintenance } from './middleware/auth.middleware';
@@ -22,6 +24,9 @@ import { AuthError } from './services/auth.service';
 import { KYCError } from './services/kyc.service';
 import { WalletError } from './services/wallet.service';
 import { PaymentError } from './services/payment.service';
+import { MarketError } from './services/market.service';
+import { OrderError } from './services/order.service';
+import { SettlementError } from './services/settlement.service';
 
 const app = express();
 
@@ -109,6 +114,12 @@ app.use(`${apiPrefix}/wallet`, walletRoutes);
 // Rutas de Pagos
 app.use(`${apiPrefix}/payments`, paymentRoutes);
 
+// Rutas de Mercados
+app.use(`${apiPrefix}/markets`, marketRoutes);
+
+// Rutas de Órdenes
+app.use(`${apiPrefix}/orders`, orderRoutes);
+
 // ============================================================================
 // MANEJO DE ERRORES
 // ============================================================================
@@ -147,6 +158,36 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
   // Manejar errores de Pagos
   if (err instanceof PaymentError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Manejar errores de Mercados
+  if (err instanceof MarketError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Manejar errores de Órdenes
+  if (err instanceof OrderError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Manejar errores de Liquidación
+  if (err instanceof SettlementError) {
     res.status(err.statusCode).json({
       success: false,
       error: err.message,
