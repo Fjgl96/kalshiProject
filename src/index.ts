@@ -13,11 +13,15 @@ import { pool, healthCheck } from './config/database.config';
 // Importar rutas
 import authRoutes from './api/routes/auth.routes';
 import kycRoutes from './api/routes/kyc.routes';
+import walletRoutes from './api/routes/wallet.routes';
+import paymentRoutes from './api/routes/payment.routes';
 
 // Importar middleware
 import { checkMaintenance } from './middleware/auth.middleware';
 import { AuthError } from './services/auth.service';
 import { KYCError } from './services/kyc.service';
+import { WalletError } from './services/wallet.service';
+import { PaymentError } from './services/payment.service';
 
 const app = express();
 
@@ -85,9 +89,10 @@ app.get(apiPrefix, (req, res) => {
     endpoints: {
       auth: `${apiPrefix}/auth`,
       kyc: `${apiPrefix}/kyc`,
+      wallet: `${apiPrefix}/wallet`,
+      payments: `${apiPrefix}/payments`,
       markets: `${apiPrefix}/markets`,
-      orders: `${apiPrefix}/orders`,
-      wallet: `${apiPrefix}/wallet`
+      orders: `${apiPrefix}/orders`
     }
   });
 });
@@ -97,6 +102,12 @@ app.use(`${apiPrefix}/auth`, authRoutes);
 
 // Rutas KYC
 app.use(`${apiPrefix}/kyc`, kycRoutes);
+
+// Rutas de Wallet
+app.use(`${apiPrefix}/wallet`, walletRoutes);
+
+// Rutas de Pagos
+app.use(`${apiPrefix}/payments`, paymentRoutes);
 
 // ============================================================================
 // MANEJO DE ERRORES
@@ -116,6 +127,26 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
   // Manejar errores de KYC
   if (err instanceof KYCError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Manejar errores de Wallet
+  if (err instanceof WalletError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+    return;
+  }
+
+  // Manejar errores de Pagos
+  if (err instanceof PaymentError) {
     res.status(err.statusCode).json({
       success: false,
       error: err.message,
